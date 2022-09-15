@@ -1,0 +1,73 @@
+﻿@page "/"
+@inject IJSRuntime JsRuntime
+@using AiChatbotWebApp.Utils
+@using System.Net
+
+<PageTitle>ChatBot</PageTitle>
+
+<div class="text-center">
+    <h1>ChatBot</h1>
+    
+    <p>This is kinda cool</p>
+    
+    <p>OpenAI Token: <input type="password" id="token" class="form-control"/></p>
+</div>
+
+<div class="border-1 container bg-dark p-5" style="width: 30%">
+    <h1>Convo:</h1>
+    <div style="flex-direction: column; align-content: start; align-items: start; text-align: start" class="d-flex">
+        @* <div> *@
+        @foreach (string msg in _messages) {
+            @if (msg.StartsWith("User:")) {
+                <div class="border-1 bg-success p-1 rounded-pill" style="width: 70%; align-self: end;">
+                    @msg
+                </div>
+                <div class="p-1"></div>
+            }
+            else {
+                <div class="border-1 bg-secondary p-1 rounded-pill" style="width: 70%; align-self: start;">
+                    @msg
+                </div>
+                <div class="p-1"></div>
+            }
+                
+        }
+    </div>
+
+    <br/>
+    <form onsubmit="return false" class="d-flex">
+        <input type="text" class="form-control" id="msg"/>
+        <button class="btn btn-lg btn-primary" @onclick="Send" style="padding-bottom: 0">Send</button>
+    </form>
+</div>
+
+@code {
+    private string[] _messages = { "User: Hello", "Bot: Hey there friend!", "User: How are you?", "Bot: I'm good, it's nice to see you again" };
+
+    private async void Send() {
+        HtmlInteractor interactor = new(JsRuntime);
+        string message = await interactor.GetValue("msg");
+        await interactor.SetValue("msg", "");
+        _messages = _messages.Append($"User: {message}").ToArray();
+        StateHasChanged();
+        
+        // Get a response from the bot
+        AiManager.Token = await interactor.GetValue("token");
+
+        // Put messages in this format: "User: Hello\nBot: Hi there!"
+        string conversation = string.Join("\n", _messages);
+        
+        string resp;
+        try {
+            resp = await AiManager.GetResponse(AiManager.Personality + conversation);
+            Console.WriteLine(AiManager.Personality + conversation);
+        }
+        catch (Exception e) {
+            Console.WriteLine(e);
+            resp = "Error: " + e.Message;
+        }
+        
+        _messages = _messages.Append($"Bot: {resp}").ToArray();
+        StateHasChanged();
+    }
+}
